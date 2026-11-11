@@ -289,9 +289,7 @@ def render_isolation(config, dns_servers=()):
     ranges, PROTECTED_NETWORKS or on-link LAN hosts. The gateway set is filled by render_gateway_sync.
     """
     protected = [str(n) for n in config.protected_networks]
-    return render_ruleset(
-        protected, table=ISOLATION_TABLE, interfaces=config.nat_bridge, ssh_in=True, dns_servers=dns_servers
-    )
+    return render_ruleset(protected, ISOLATION_TABLE, config.nat_bridge, dns_servers)
 
 
 def render_gateway_sync_pve(gateways):
