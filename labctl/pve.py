@@ -11,22 +11,6 @@ import shlex
 from dataclasses import dataclass
 from pathlib import Path
 
-from labctl.config import (
-    _COHORT,
-    _FLAG_PREFIX,
-    _LOCALE,
-    _SECRET,
-    _SSH_TARGET,
-    _TIMEZONE,
-    GUEST_IMAGES,
-    MAX_STUDENTS,
-    SECRET_BYTES,
-    _items,
-    _network,
-    parse_env,
-    select_students,
-    student_ids,
-)
 from labctl.firewall import render_gateway_sync, render_ruleset
 from labctl.guest import (
     CHINESE_PACKAGES,
@@ -38,6 +22,24 @@ from labctl.guest import (
 )
 from labctl.labs.lab05_organize import RM_GUARD
 from labctl.private import check_private
+from labctl.settings import (
+    COHORT,
+    FLAG_PREFIX,
+    GUEST_OS,
+    LOCALE,
+    MAX_STUDENTS,
+    SECRET,
+    SECRET_BYTES,
+    SSH_TARGET,
+    TIMEZONE,
+    integer,
+    items,
+    match,
+    network,
+    parse_env,
+    select_students,
+    student_ids,
+)
 
 # 和 deploy/pve/shell-lab.env.example 的順序相同。
 DEFAULTS = {
@@ -143,18 +145,6 @@ def build_pve_config(values, source="settings"):
     return _build(v, mode)
 
 
-def _match(key, v, pattern, expected):
-    if not pattern.fullmatch(v[key]):
-        raise ValueError(f"{key} must be {expected}, got {v[key]!r}")
-    return v[key]
-
-
-def _integer(key, v, minimum, maximum):
-    if not re.fullmatch(r"[0-9]+", v[key]) or not minimum <= int(v[key]) <= maximum:
-        raise ValueError(f"{key} must be an integer from {minimum} to {maximum}")
-    return int(v[key])
-
-
 def _ipv4(key, value):
     try:
         return str(ipaddress.IPv4Address(value))
@@ -164,38 +154,38 @@ def _ipv4(key, value):
 
 def _build(v, mode):
     if v["PVE_SSH"]:
-        _match("PVE_SSH", v, _SSH_TARGET, "user@host")
-    cohort = _match("COHORT", v, _COHORT, "a lowercase label, at most 24 characters")
-    count = _integer("STUDENT_COUNT", v, 1, MAX_STUDENTS)
-    if v["LAB_SECRET"] and not _SECRET.fullmatch(v["LAB_SECRET"]):
+        match("PVE_SSH", v, SSH_TARGET, "user@host")
+    cohort = match("COHORT", v, COHORT, "a lowercase label, at most 24 characters")
+    count = integer("STUDENT_COUNT", v, 1, MAX_STUDENTS)
+    if v["LAB_SECRET"] and not SECRET.fullmatch(v["LAB_SECRET"]):
         raise ValueError(f"LAB_SECRET must be {SECRET_BYTES * 2} lowercase hex digits")
-    flag_prefix = _match("FLAG_PREFIX", v, _FLAG_PREFIX, "letters, digits, _ or -, at most 32 characters")
-    if v["GUEST_OS"] not in GUEST_IMAGES:
-        raise ValueError(f"GUEST_OS must be one of: {', '.join(GUEST_IMAGES)}")
+    flag_prefix = match("FLAG_PREFIX", v, FLAG_PREFIX, "letters, digits, _ or -, at most 32 characters")
+    if v["GUEST_OS"] not in GUEST_OS:
+        raise ValueError(f"GUEST_OS must be one of: {', '.join(GUEST_OS)}")
     template = v["GUEST_TEMPLATE"]
     if not re.fullmatch(r"[A-Za-z0-9._-]+\.tar\.(zst|gz|xz)", template) or not template.startswith(v["GUEST_OS"] + "-"):
         raise ValueError(f"GUEST_TEMPLATE must be a {v['GUEST_OS']} LXC template file name, got {template!r}")
-    locale = _match("GUEST_LOCALE", v, _LOCALE, "a UTF-8 locale such as zh_TW.UTF-8")
-    timezone = _match("GUEST_TIMEZONE", v, _TIMEZONE, "a time zone such as Asia/Taipei")
+    locale = match("GUEST_LOCALE", v, LOCALE, "a UTF-8 locale such as zh_TW.UTF-8")
+    timezone = match("GUEST_TIMEZONE", v, TIMEZONE, "a time zone such as Asia/Taipei")
     if v["STUDENT_SUDO"] not in ("true", "false"):
         raise ValueError("STUDENT_SUDO must be true or false")
 
-    template_storage = _match("TEMPLATE_STORAGE", v, _STORAGE, "a PVE storage name")
-    storage = _match("STORAGE", v, _STORAGE, "a PVE storage name")
-    ctid_start = _integer("CTID_START", v, 100, 999_999_999 - count + 1)
+    template_storage = match("TEMPLATE_STORAGE", v, _STORAGE, "a PVE storage name")
+    storage = match("STORAGE", v, _STORAGE, "a PVE storage name")
+    ctid_start = integer("CTID_START", v, 100, 999_999_999 - count + 1)
     nameserver = _ipv4("CT_NAMESERVER", v["CT_NAMESERVER"]) if v["CT_NAMESERVER"] else ""
 
-    bridge = _match("NAT_BRIDGE", v, _IFACE, "a network interface name")
-    subnet = _network("NAT_SUBNET", v["NAT_SUBNET"])
+    bridge = match("NAT_BRIDGE", v, _IFACE, "a network interface name")
+    subnet = network("NAT_SUBNET", v["NAT_SUBNET"])
     if not any(subnet.subnet_of(n) for n in _PRIVATE_V4):
         raise ValueError("NAT_SUBNET must be a private IPv4 network")
     # 第一個位址給橋接，容器從第二個開始，最後一個是廣播位址。
     if subnet.num_addresses < count + 3:
         raise ValueError(f"NAT_SUBNET is too small for {count} containers")
-    protected = tuple(_network("PROTECTED_NETWORKS", n) for n in _items(v["PROTECTED_NETWORKS"]))
-    for network in protected:
-        if subnet.overlaps(network):
-            raise ValueError(f"PROTECTED_NETWORKS overlaps NAT_SUBNET: {network}")
+    protected = tuple(network("PROTECTED_NETWORKS", n) for n in items(v["PROTECTED_NETWORKS"]))
+    for net in protected:
+        if subnet.overlaps(net):
+            raise ValueError(f"PROTECTED_NETWORKS overlaps NAT_SUBNET: {net}")
 
     return PveConfig(
         pve_ssh=v["PVE_SSH"],
@@ -212,10 +202,10 @@ def _build(v, mode):
         template_storage=template_storage,
         storage=storage,
         ctid_start=ctid_start,
-        ct_cores=_integer("CT_CORES", v, 1, 8),
-        ct_memory_mb=_integer("CT_MEMORY_MB", v, 256, 16384),
-        ct_swap_mb=_integer("CT_SWAP_MB", v, 0, 16384),
-        ct_disk_gb=_integer("CT_DISK_GB", v, 2, 256),
+        ct_cores=integer("CT_CORES", v, 1, 8),
+        ct_memory_mb=integer("CT_MEMORY_MB", v, 256, 16384),
+        ct_swap_mb=integer("CT_SWAP_MB", v, 0, 16384),
+        ct_disk_gb=integer("CT_DISK_GB", v, 2, 256),
         ct_nameserver=nameserver,
         nat_bridge=bridge,
         nat_subnet=subnet,
@@ -225,12 +215,12 @@ def _build(v, mode):
 
 
 def _portforward(v, count):
-    iface = _match("PORTFORWARD_IFACE", v, _IFACE, "a network interface name")
+    iface = match("PORTFORWARD_IFACE", v, _IFACE, "a network interface name")
     address = v["PORTFORWARD_ADDRESS"]
     if address and not _HOST.fullmatch(address):
         raise ValueError(f"PORTFORWARD_ADDRESS must be an IPv4 address or host name, got {address!r}")
-    port_start = _integer("PORTFORWARD_PORT_START", v, MIN_PORT, 65536 - count)
-    sources = [_network("PORTFORWARD_SOURCES", n) for n in _items(v["PORTFORWARD_SOURCES"])]
+    port_start = integer("PORTFORWARD_PORT_START", v, MIN_PORT, 65536 - count)
+    sources = [network("PORTFORWARD_SOURCES", n) for n in items(v["PORTFORWARD_SOURCES"])]
     if not sources:
         raise ValueError("PORTFORWARD_SOURCES must list at least one network, 0.0.0.0/0 allows every source")
     return {

@@ -3,9 +3,10 @@
 import hashlib
 import ipaddress
 
-from labctl.config import SUBNET_PREFIX, select_students
+from labctl.config import SUBNET_PREFIX
 from labctl.firewall import BRIDGE_PREFIX
 from labctl.guest import guest_hostname
+from labctl.settings import select_students
 
 VM_FIELDS = (
     "name",

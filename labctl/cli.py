@@ -9,7 +9,7 @@ from pathlib import Path
 
 from labctl import cards, keys, netbird, passwords
 from labctl.cloudinit import render_user_data
-from labctl.config import host_env_text, load_config, select_students
+from labctl.config import host_env_text, load_config
 from labctl.firewall import default_gateways, render_gateway_sync, render_ruleset
 from labctl.labs import DEFAULT_FLAG_PREFIX, LABS, build_labs, full_flag
 from labctl.plan import build_plan, vm_fields
@@ -23,6 +23,7 @@ from labctl.pve import (
     render_network,
     shell_settings,
 )
+from labctl.settings import select_students
 
 # 這兩個值印出來就外洩了，config get 不給看。
 SECRET_FIELDS = {"netbird_pat", "lab_secret"}

@@ -4,7 +4,6 @@ import sys
 import unittest
 
 from labctl.cloudinit import PACKAGES as VM_PACKAGES
-from labctl.config import parse_env
 from labctl.pve import (
     ACCESS_SETTINGS,
     DEFAULTS,
@@ -17,6 +16,7 @@ from labctl.pve import (
     render_network,
     shell_settings,
 )
+from labctl.settings import parse_env
 from tests.helpers import REPO, SECRET_HEX, scratch_dir
 
 EXAMPLE = REPO / "deploy" / "pve" / "shell-lab.env.example"
