@@ -14,10 +14,11 @@ SETUP := $(ON_PVE) $(PVE_DIR)/deploy/pve/shell-lab-setup.sh
 PASSWORDS := local/passwords.json
 CARDS := local/cards.md
 
-.PHONY: help env check upload dry-run deploy passwords labs reset-lab cards stop start destroy test lint fmt
+.PHONY: help env check upload dry-run deploy passwords labs reset-lab guest-setup cards stop start destroy test lint \
+	fmt
 
 help: ## 列出所有指令
-	@grep -E '^[a-z-]+:.*## ' $(firstword $(MAKEFILE_LIST)) | awk -F':.*## ' '{printf "  make %-10s %s\n", $$1, $$2}'
+	@grep -E '^[a-z-]+:.*## ' $(firstword $(MAKEFILE_LIST)) | awk -F':.*## ' '{printf "  make %-12s %s\n", $$1, $$2}'
 
 # 密碼存在本機（權限 600），經 ssh 的 stdin 送到主機，再經 stdin 設進容器。
 define set_passwords
@@ -68,6 +69,9 @@ reset-lab: upload ## 重設一位學生的一題：make reset-lab STUDENT=studen
 	@[[ "$(STUDENT)" =~ ^student[0-9]{2}$$ && "$(LAB)" =~ ^[0-9]{2}-[a-z0-9-]+$$ ]] || \
 		{ echo "usage: make reset-lab STUDENT=student05 LAB=05-organize" >&2; exit 2; }
 	ssh $(PVE_SSH) "$(SETUP) --labs $(STUDENT) $(LAB)"
+
+guest-setup: upload ## 把容器設定（套件、hello、登入訊息等）重新套用到已經建好的容器
+	ssh $(PVE_SSH) "$(SETUP) --guest-setup"
 
 cards: upload ## 全部學生的連線指令和密碼，寫到 local/cards.md
 	$(write_cards)
