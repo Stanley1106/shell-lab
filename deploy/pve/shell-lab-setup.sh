@@ -15,6 +15,9 @@
 # 設定：同目錄的 shell-lab.env（從 shell-lab.env.example 複製），由 labctl 檢查並補上預設值。
 # 也可以用 ENV_FILE=路徑 指定別的設定檔。labctl 在這支腳本往上兩層的目錄（repo 根目錄）。
 set -euo pipefail
+# 不沿用呼叫者的 umask：umask 077 時 pct create 建出只有主機 root 讀得到的根目錄，
+# unprivileged 容器的對應帳號解不開樣板。要保密的目錄都另外明確設定權限。
+umask 022
 
 here=$(dirname "$(readlink -f "$0")")
 repo=$(readlink -f "$here/../..")
