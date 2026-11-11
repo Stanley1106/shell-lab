@@ -26,9 +26,9 @@
 
 答對時會一起印出一張點陣圖，左邊是參考社團 logo 畫的蜘蛛，右邊是跟這題有關的道具（`labctl/labs/art.py`）。第 8 題的 flag 寫在 log 的其中一行，交給 `check` 確認時才會印出圖。題目裡的物品檔案也是點陣圖，用 `cat` 就看得到。
 
-第 5 題要學生留下絲線、露水和地圖。VM 開機時會把 `rm` 的保護裝到 `/etc/profile.d/shell-lab-rm.sh`，學生用 `rm` 刪這些東西會被擋下並看到原因。用 `command rm` 硬刪的話，`./check` 會放回去。
+第 5 題要學生留下絲線、露水和地圖。建立容器時會把 `rm` 的保護裝到 `/etc/profile.d/shell-lab-rm.sh`，學生用 `rm` 刪這些東西會被擋下並看到原因。用 `command rm` 硬刪的話，`./check` 會放回去。
 
-flag 放在學生自己的 VM 裡，有心的學生可以去讀 `check` 的原始碼。這套題目是給上課練習用的，不適合拿來比賽。
+flag 放在學生自己的容器裡，有心的學生可以去讀 `check` 的原始碼。這套題目是給上課練習用的，不適合拿來比賽。
 
 ## 答案
 
@@ -72,7 +72,7 @@ python3 -m labctl labs flags
 | `labctl/labs/art.py` | 答對時印出的點陣圖，和題目裡的物品圖 |
 | `labctl/labs/answer_check.py` | 加密 flag 的 `seal()`，還有第 1、8、9、12 題共用的 `check` |
 
-改故事或提示，就改模組裡的 `README` 字串，改完跑 `make test`。`seed()` 只能透過 `ws` 寫進自己的資料夾，也不連網路。第 13 題產生時會呼叫 `git`，所以實驗主機要有 git，`make host` 會裝。
+改故事或提示，就改模組裡的 `README` 字串，改完跑 `make test`。`seed()` 只能透過 `ws` 寫進自己的資料夾，也不連網路。第 13 題產生時會呼叫 `git`，所以 PVE 主機要有 git，放題目時沒有的話會自動安裝。
 
 ## 重設
 
