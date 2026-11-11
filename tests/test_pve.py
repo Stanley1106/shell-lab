@@ -3,6 +3,7 @@ import subprocess
 import sys
 import unittest
 
+from labctl.cloudinit import PACKAGES as VM_PACKAGES
 from labctl.config import parse_env
 from labctl.pve import (
     ACCESS_SETTINGS,
@@ -207,13 +208,22 @@ class PortForwardRulesTest(unittest.TestCase):
 
 
 class GuestSetupTest(unittest.TestCase):
-    def test_installs_what_the_labs_use(self):
-        text = render_guest_setup(config())
+    def installed(self, **values):
+        text = render_guest_setup(config(**values))
         install = next(line for line in text.splitlines() if line.startswith("apt-get install"))
-        for package in ("openssh-server", "python3", "man-db", "less", "file", "git", "vim", "nano"):
-            self.assertIn(f" {package}", install)
-        self.assertNotIn(" sudo", install)
-        self.assertNotIn("language-pack-zh-hant", install)
+        return set(install.split()[install.split().index("DPkg::Lock::Timeout=300") + 1 :])
+
+    def test_installs_the_same_tools_as_the_vms(self):
+        # 學生在兩種部署裡拿到一樣的工具，例如 tree、unzip、xxd、curl。
+        packages = self.installed()
+        self.assertLessEqual(set(VM_PACKAGES), packages)
+        self.assertLessEqual({"tree", "unzip", "xxd", "curl"}, packages)
+
+    def test_installs_what_the_labs_use(self):
+        packages = self.installed()
+        self.assertLessEqual({"openssh-server", "python3", "man-db", "less", "file", "git", "vim", "nano"}, packages)
+        self.assertNotIn("sudo", packages)
+        self.assertNotIn("language-pack-zh-hant", packages)
 
     def test_same_sshd_and_rm_guard_as_the_vms(self):
         text = render_guest_setup(config())
