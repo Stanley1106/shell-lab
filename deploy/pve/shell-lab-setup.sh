@@ -2,11 +2,12 @@
 # 在 Proxmox VE 主機上用原生 LXC 部署 shell-lab：
 # 一座 NAT 橋接、每人一台 Ubuntu 容器，以及讓使用者連進容器的連線方式（access/<ACCESS_MODE>.sh）。
 #
-# 用法（root）：shell-lab-setup.sh [--dry-run | --passwords | --labs [學生 [題目]] | --connect | --stop | --start | --destroy]
+# 用法（root）：shell-lab-setup.sh [--dry-run | --passwords | --labs [學生 [題目]] | --guest-setup | --connect | --stop | --start | --destroy]
 #   （無）        建立 NAT 橋接、連線方式和全部容器
 #   --dry-run     只印出會做的事，不實際執行
 #   --passwords   設定密碼：stdin 每行「學生ID 密碼」（labctl passwords export 的輸出）
 #   --labs        放題目；~/lab 已經有東西的跳過。加學生和題目只重設那一題，例如 --labs student05 05-organize
+#   --guest-setup 把容器設定（套件、語系、sshd、hello、登入訊息）重新套用到已經建好的容器
 #   --connect     印出每個人的連線指令（學生ID<TAB>指令），labctl cards 用它產生連線清單
 #   --stop        關閉所有容器（保留）
 #   --start       啟動所有容器
@@ -60,7 +61,7 @@ run() {
 }
 
 usage() {
-    sed -n '5,13s/^# \{0,1\}//p' "$0"
+    sed -n '5,14s/^# \{0,1\}//p' "$0"
     exit "${1:-0}"
 }
 
@@ -517,6 +518,29 @@ cmd_labs() {
 }
 
 # 連線指令由連線方式決定。stdout 只有「學生ID<TAB>指令」，其他訊息都到 stderr。
+# 建立容器時跑的設定可以重跑，用來把新加的套件、hello 和登入訊息套到已經建好的容器。
+cmd_guest_setup() {
+    local setup sid failed=()
+    precheck false
+    setup=$(labctl render guest-setup) || die "產生容器設定失敗"
+    step "重新套用容器設定"
+    for sid in "${STUDENTS[@]}"; do
+        ct_info "$sid"
+        if ! ct_owned; then
+            warn "$sid 的容器 CT $CTID 不存在"
+            failed+=("$sid")
+        elif ! ct_running "$CTID"; then
+            warn "CT $CTID $CT_NAME 沒有在執行，先 --start"
+            failed+=("$sid")
+        elif printf '%s\n' "$setup" | pct exec "$CTID" -- bash -s >/dev/null; then
+            ok "CT $CTID $CT_NAME 已套用"
+        else
+            failed+=("$sid")
+        fi
+    done
+    [ "${#failed[@]}" -eq 0 ] || die "這些學生的容器沒有套用成功：${failed[*]}"
+}
+
 cmd_connect() {
     local sid
     access_prepare >&2
@@ -554,7 +578,7 @@ cmd_destroy() {
 
 case ${1:-} in
 -h | --help) usage 0 ;;
-"" | --dry-run | --passwords | --labs | --connect | --stop | --start | --destroy) ;;
+"" | --dry-run | --passwords | --labs | --guest-setup | --connect | --stop | --start | --destroy) ;;
 *) usage 2 >&2 ;;
 esac
 load_settings
@@ -566,6 +590,7 @@ case ${1:-} in
     ;;
 --passwords) cmd_passwords ;;
 --labs) cmd_labs "${2:-}" "${3:-}" ;;
+--guest-setup) cmd_guest_setup ;;
 --connect) cmd_connect ;;
 --stop) cmd_stop ;;
 --start) cmd_start ;;

@@ -129,6 +129,14 @@ class SetupScriptTest(unittest.TestCase):
             self.assertNotEqual(result.returncode, 0, args)
         self.assertEqual(self.calls(), [])
 
+    def test_guest_setup_is_sent_to_every_container_over_stdin(self):
+        result = self.run_script("--guest-setup", FAKE_OTHER="203")
+        self.assertEqual(result.returncode, 1)  # CT 203 不是這個腳本建的
+        self.assertIn("student03", result.stderr)
+        calls = self.calls()
+        self.assertEqual([c.split(" | ")[:2] for c in calls], [["exec 201", "bash -s"], ["exec 202", "bash -s"]])
+        self.assertTrue(all(c.split(" | ")[2].startswith("#!/bin/bash") for c in calls))
+
     def test_connect_lines_become_the_connection_list(self):
         result = self.run_script("--connect")
         self.assertEqual(result.returncode, 0, result.stderr)
