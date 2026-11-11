@@ -1,10 +1,14 @@
 """Functional test of the PVE container network: real connections through the generated nftables rules.
 
-Runs tests/pve_netlab.sh inside a brand-new network namespace, the same way as test_firewall_netns.
+Runs tests/pve_netlab.sh inside a brand-new network namespace (`unshare -n`, or `unshare -Urn` when not
+root), so the host's own network is never touched. Needs: unshare, nsenter, ip, ping, nft. To use an nft
+binary that is not on PATH, set LABCTL_TEST_NFT (and LABCTL_TEST_NFT_LIBS for its shared libraries).
 The bridge-level (L2) rules need a kernel with nftables bridge support; without it the test still runs
 everything else and expects what an unfiltered bridge does.
 """
 
+import os
+import shutil
 import subprocess
 import unittest
 
@@ -17,7 +21,22 @@ from labctl.pve import (
     render_nat,
 )
 from tests.helpers import REPO, scratch_dir
-from tests.test_firewall_netns import NETNS, netns_available, nft_env
+
+NFT = os.environ.get("LABCTL_TEST_NFT") or shutil.which("nft")
+NETNS = ["unshare", "-n"] if os.geteuid() == 0 else ["unshare", "-Urn"]
+
+
+def netns_available():
+    if not (NFT and all(shutil.which(t) for t in ("unshare", "nsenter", "ip", "ping"))):
+        return False
+    return subprocess.run([*NETNS, "true"], capture_output=True).returncode == 0
+
+
+def nft_env():
+    env = dict(os.environ, NFT=NFT)
+    if os.environ.get("LABCTL_TEST_NFT_LIBS"):
+        env["LD_LIBRARY_PATH"] = os.environ["LABCTL_TEST_NFT_LIBS"]
+    return env
 
 
 def config(count):

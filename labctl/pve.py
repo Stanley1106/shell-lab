@@ -1,7 +1,7 @@
 """PVE LXC deployment: settings in deploy/pve/shell-lab.env and the per-student container plan.
 
-The settings file is separate from the NetBird `.env`. Every key has a default except the
-access mode's required ones; unknown keys are refused so a typo never silently keeps a default.
+Every key has a default except the access mode's required ones; unknown keys are refused so a typo
+never silently keeps a default.
 Pure computation, never touches a host.
 """
 
@@ -283,7 +283,7 @@ def render_network(config, dns_servers=()):
 
 
 def render_isolation(config, dns_servers=()):
-    """The lab VMs' isolation rules on the NAT bridge, plus port-forwarded SSH coming in.
+    """Isolation rules on the NAT bridge, plus port-forwarded SSH coming in.
 
     Containers reach the internet only via the host's default gateway, never the host itself, private
     ranges, PROTECTED_NETWORKS or on-link LAN hosts. The gateway set is filled by render_gateway_sync.
@@ -399,8 +399,8 @@ def _render_portforward(config):
     )
 
 
-# 和 VM 的 cloud-init 同一份清單，兩種部署給學生的工具一樣。後面幾個是 VM 映像本來就有、
-# 而 LXC 樣板不一定有的：nano（第 12 題可以用）、locales 和 tzdata（套用 GUEST_LOCALE、GUEST_TIMEZONE）。
+# labctl/guest.py 的清單，再加上 LXC 樣板不一定有的：nano（第 12 題可以用），
+# 以及 locales 和 tzdata（套用 GUEST_LOCALE、GUEST_TIMEZONE）。
 GUEST_PACKAGES = [*PACKAGES, "nano", "locales", "tzdata"]
 _HEREDOC_END = "SHELL_LAB_EOF"
 
@@ -412,7 +412,7 @@ def _write_file(path, content):
 
 
 def render_guest_setup(config):
-    """Return a bash script that sets up one container the way cloud-init sets up a VM.
+    """Return a bash script that sets up one container: packages, locale, time zone, sshd and the student account.
 
     The script carries no secret: passwords are set separately over stdin.
     """

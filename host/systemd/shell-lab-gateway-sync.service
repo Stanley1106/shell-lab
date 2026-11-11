@@ -1,8 +1,0 @@
-[Unit]
-Description=Sync allowed uplink gateways for shell lab VMs
-Requires=shell-lab-firewall.service
-After=shell-lab-firewall.service network-online.target
-
-[Service]
-Type=oneshot
-ExecStart=/usr/local/sbin/shell-lab-gateway-sync

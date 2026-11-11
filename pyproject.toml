@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "shell-lab"
 version = "1.0.0"
-description = "一人一台 Linux VM 的命令列課程環境，學生用 NetBird 連線"
+description = "一人一台 Linux 容器的命令列課程環境，部署在 Proxmox VE 上"
 readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE"]
