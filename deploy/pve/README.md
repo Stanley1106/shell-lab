@@ -81,7 +81,7 @@ make deploy       # 建立全部，連線清單寫到 local/cards.md
 `make deploy` 依序做這些事，每一步都可以重跑，已經做過的會略過：
 
 1. 把 `labctl/` 和 `deploy/pve/` 送到主機的 `/opt/shell-lab/pve`，`.env` 放在 `/opt/shell-lab/pve/.env`（權限 600）。
-2. 在主機上建立容器網路、隔離規則和連接埠轉發，再逐台建立容器，裝好題目要用的套件、語系、時區、sshd 設定和帳號 `student`。每台建立時要從網路裝套件，人數多時要等一段時間。
+2. 在主機上建立容器網路、隔離規則和連接埠轉發，再逐台建立容器，裝好題目要用的套件、語系、時區、sshd 設定、帳號 `student`、第 0 題 `hello` 和登入訊息。每台建立時要從網路裝套件，人數多時要等一段時間。
 3. 替還沒有密碼的學生產生密碼，存在本機的 `local/passwords.json`（權限 600），經 stdin 設進容器。
 4. 把題目放進每台容器的 `~/lab`，已經有東西的略過，不覆蓋作業。
 5. 產生 `local/cards.md`：每個人的連線指令和密碼。
@@ -97,6 +97,7 @@ make deploy       # 建立全部，連線清單寫到 local/cards.md
 | `make stop` | 關閉所有容器，資料保留 |
 | `make start` | 啟動所有容器 |
 | `make reset-lab STUDENT=student05 LAB=05-organize` | 只重設一題，舊的資料夾改名成 `~/lab/.05-organize.old-時間` 留著 |
+| `make guest-setup` | 把容器設定重新套用到已經建好的容器，例如加了套件或更新了 `hello` 之後 |
 | `make cards` | 重新產生連線清單 |
 | `make destroy` | 刪除所有容器和主機上的網路設定，要輸入 `yes` 確認 |
 
@@ -120,6 +121,7 @@ mkdir -p -m 700 local
 python3 -m labctl passwords new              # make passwords
 python3 -m labctl passwords export | deploy/pve/shell-lab-setup.sh --passwords
 deploy/pve/shell-lab-setup.sh --labs         # make labs；加學生和題目就是 make reset-lab
+deploy/pve/shell-lab-setup.sh --guest-setup  # make guest-setup
 deploy/pve/shell-lab-setup.sh --connect | python3 -m labctl cards   # make cards
 deploy/pve/shell-lab-setup.sh --stop         # make stop；--start、--destroy 同理
 ```
@@ -250,7 +252,7 @@ deploy/pve/shell-lab-setup.sh --stop         # make stop；--start、--destroy �
 | 建容器時「連不上網路」 | 確認主機本身能上網、`CT_NAMESERVER` 或主機的 DNS 可用，以及 `nft list set inet shell_lab_pve uplink_gateways` 有主機的預設閘道 |
 | 學生連不進來 | 確認學生的來源 IP 在 `PORTFORWARD_SOURCES` 裡、埠沒被其他服務占用，以及 `nft list table ip shell_lab_access` 有對應的埠 |
 | 學生看到 `REMOTE HOST IDENTIFICATION HAS CHANGED` | 容器重建過，主機金鑰換了。學生執行 `ssh-keygen -R "[主機]:埠"` 後再連 |
-| 學生的 sudo 顯示「不在 sudoers 檔案中」 | `STUDENT_SUDO=false` 的正常結果；需要工具的話由你加進 `labctl/guest.py` 的套件清單 |
+| 學生的 sudo 顯示「不在 sudoers 檔案中」 | `STUDENT_SUDO=false` 的正常結果；需要工具的話由你加進 `labctl/guest.py` 的套件清單，再 `make guest-setup` |
 | `pct exec` 時出現 `perl: warning: Setting locale failed` | 只是警告：主機的 `LANG` 被帶進容器，容器裡沒有那個語系。自己下指令時可以加 `env LANG=C.UTF-8 LC_ALL=C.UTF-8` |
 | 主機上的設定檔還在 `deploy/pve/shell-lab.env` | 舊版的位置，腳本會停下並印出要執行的 `mv` |
 | 本機的密碼檔還叫 `local/pve-passwords.json` | 舊版的檔名，`labctl passwords new` 會停下並印出要執行的 `mv`，學生的密碼不會被換掉 |
