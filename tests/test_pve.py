@@ -237,6 +237,14 @@ class GuestSetupTest(unittest.TestCase):
         self.assertIn("coreutils-from-gnu coreutils-from-uutils-", text)
         self.assertNotIn("coreutils-from-gnu", render_guest_setup(config()))
 
+    def test_sshd_config_check_works_before_ssh_has_run(self):
+        lines = render_guest_setup(config()).splitlines()
+        self.assertLess(lines.index("install -d -m 0755 /run/sshd"), lines.index("/usr/sbin/sshd -t"))
+
+    def test_runs_in_a_locale_every_container_has(self):
+        lines = render_guest_setup(config(GUEST_LOCALE="zh_TW.UTF-8")).splitlines()
+        self.assertLess(lines.index("export LANG=C.UTF-8 LC_ALL=C.UTF-8"), lines.index("apt-get update -q"))
+
     def test_no_secret_in_the_script(self):
         self.assertNotIn(SECRET_HEX, render_guest_setup(config(LAB_SECRET=SECRET_HEX)))
 
