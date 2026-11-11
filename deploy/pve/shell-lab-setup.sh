@@ -5,14 +5,14 @@
 # 用法（root）：shell-lab-setup.sh [--dry-run | --passwords | --labs [學生 [題目]] | --connect | --stop | --start | --destroy]
 #   （無）        建立 NAT 橋接、連線方式和全部容器
 #   --dry-run     只印出會做的事，不實際執行
-#   --passwords   設定密碼：stdin 每行「學生ID 密碼」（labctl pve passwords-export 的輸出）
+#   --passwords   設定密碼：stdin 每行「學生ID 密碼」（labctl passwords export 的輸出）
 #   --labs        放題目；~/lab 已經有東西的跳過。加學生和題目只重設那一題，例如 --labs student05 05-organize
-#   --connect     印出每個人的連線指令（學生ID<TAB>指令），labctl pve cards 用它產生連線清單
+#   --connect     印出每個人的連線指令（學生ID<TAB>指令），labctl cards 用它產生連線清單
 #   --stop        關閉所有容器（保留）
 #   --start       啟動所有容器
 #   --destroy     刪除所有容器、連線方式和容器網路，主機恢復原狀（需要確認）
 #
-# 設定：repo 根目錄的 .env（make pve-env 或從 .env.example 複製），由 labctl 檢查並補上預設值。
+# 設定：repo 根目錄的 .env（make env 或從 .env.example 複製），由 labctl 檢查並補上預設值。
 # 也可以用 ENV_FILE=路徑 指定別的設定檔。labctl 也在 repo 根目錄，也就是這支腳本往上兩層。
 set -euo pipefail
 # 不沿用呼叫者的 umask：umask 077 時 pct create 建出只有主機 root 讀得到的根目錄，
@@ -77,10 +77,10 @@ load_settings() {
     if [ ! -e "$ENV_FILE" ] && [ -f "$here/shell-lab.env" ]; then
         die "設定檔改放在 repo 根目錄的 .env，請執行：mv $here/shell-lab.env $repo/.env"
     fi
-    settings=$(labctl pve settings) || die "設定檔 $ENV_FILE 有問題，見上面的錯誤訊息"
+    settings=$(labctl settings) || die "設定檔 $ENV_FILE 有問題，見上面的錯誤訊息"
     # labctl 只輸出檢查過的 KEY=value，值裡沒有空白、引號或 $。
     eval "$settings"
-    mapfile -t STUDENTS < <(labctl pve students)
+    mapfile -t STUDENTS < <(labctl students)
     [ -f "$here/access/$ACCESS_MODE.sh" ] || die "找不到連線方式 $here/access/$ACCESS_MODE.sh"
     # shellcheck source=access/portforward.sh
     . "$here/access/$ACCESS_MODE.sh"
@@ -88,7 +88,7 @@ load_settings() {
 
 # 讀一位學生的容器欄位：ct_info student01 → CTID CT_NAME ADDRESS
 ct_info() {
-    read -r CTID CT_NAME ADDRESS < <(labctl pve ct "$1" ctid hostname address </dev/null)
+    read -r CTID CT_NAME ADDRESS < <(labctl ct "$1" ctid hostname address </dev/null)
 }
 
 # 這幾個函式在讀 stdin 的迴圈裡也會用到，不能把 stdin 吃掉。
@@ -161,7 +161,7 @@ EOF
 }
 
 sync_command() {
-    printf '%s' "ip -j -4 route show default | PYTHONPATH=$repo python3 -m labctl --env $ENV_FILE pve render-gateway-sync | /usr/sbin/nft -f -"
+    printf '%s' "ip -j -4 route show default | PYTHONPATH=$repo python3 -m labctl --env $ENV_FILE render gateway-sync | /usr/sbin/nft -f -"
 }
 
 sync_service() {
@@ -237,7 +237,7 @@ setup_network() {
         printf '    %s[dry-run]%s 寫入 %s 並 ifup %s：\n' "$C_DIM" "$C_RESET" "$BRIDGE_FILE" "$NAT_BRIDGE"
         bridge_config | sed 's/^/        /'
         printf '    %s[dry-run]%s 寫入 %s：\n' "$C_DIM" "$C_RESET" "$NETWORK_RULES"
-        labctl pve render-network --dns "$DNS_SERVERS" | sed 's/^/        /'
+        labctl render network --dns "$DNS_SERVERS" | sed 's/^/        /'
         printf '    %s[dry-run]%s 寫入並啟用 %s（打開 IP 轉送）和 %s.timer：\n' "$C_DIM" "$C_RESET" "$NETWORK_UNIT" "$SYNC_UNIT"
         printf '        %s\n' "$(sync_command)"
         return
@@ -245,7 +245,7 @@ setup_network() {
     install -d -m 0700 "$STATE_DIR"
     [ -f "$STATE_DIR/ip_forward.orig" ] || sysctl -n net.ipv4.ip_forward >"$STATE_DIR/ip_forward.orig"
 
-    labctl pve render-network --dns "$DNS_SERVERS" >"$NETWORK_RULES.new"
+    labctl render network --dns "$DNS_SERVERS" >"$NETWORK_RULES.new"
     nft -c -f "$NETWORK_RULES.new"
     mv "$NETWORK_RULES.new" "$NETWORK_RULES"
     write_if_changed "/etc/systemd/system/$NETWORK_UNIT" "$(network_unit)" || true
@@ -312,7 +312,7 @@ create_args() {
     printf '%s\0' "${args[@]}"
 }
 
-# 容器內的設定：labctl pve render-guest-setup 產生的腳本，經 stdin 交給容器裡的 bash。
+# 容器內的設定：labctl render guest-setup 產生的腳本，經 stdin 交給容器裡的 bash。
 # 這個函式在 || 裡呼叫，set -e 不會生效，所以每一步都檢查結果。
 provision() {
     local setup
@@ -320,7 +320,7 @@ provision() {
     pct exec "$CTID" -- sh -c 'i=0; until getent hosts archive.ubuntu.com >/dev/null; do
         i=$((i + 1)); [ "$i" -lt 30 ] || exit 1; sleep 2; done' ||
         { err "CT $CTID 連不上網路，請檢查 $NAT_BRIDGE 和 nft table shell_lab_nat"; return 1; }
-    setup=$(labctl pve render-guest-setup) || return 1
+    setup=$(labctl render guest-setup) || return 1
     printf '%s\n' "$setup" | pct exec "$CTID" -- bash -s >/dev/null ||
         { err "CT $CTID 容器內的設定失敗（套件、sshd 或帳號）"; return 1; }
 }
@@ -340,7 +340,7 @@ create_containers() {
         mapfile -d '' -t args < <(create_args)
         run pct create "$CTID" "${args[@]}"
         if $DRY_RUN; then
-            printf '    %s[dry-run]%s 容器內：執行 labctl pve render-guest-setup（套件、sshd、語系、帳號 student%s）\n' \
+            printf '    %s[dry-run]%s 容器內：執行 labctl render guest-setup（套件、sshd、語系、帳號 student%s）\n' \
                 "$C_DIM" "$C_RESET" "$($STUDENT_SUDO && echo '，sudo 群組')"
             continue
         fi
@@ -412,7 +412,7 @@ as_student() {
 seed_one() {
     local lab=$1 tmp old count
     tmp=$(mktemp -d) || return 1
-    if ! labctl pve labs-build "$SID" --out "$tmp/lab" </dev/null >/dev/null; then
+    if ! labctl labs build "$SID" --out "$tmp/lab" </dev/null >/dev/null; then
         rm -rf "$tmp"
         return 1
     fi
@@ -461,7 +461,7 @@ cmd_create() {
     if $DRY_RUN; then
         step "dry-run 結束，沒有做任何變更"
     else
-        step "完成。接著設定密碼、放題目、產生連線清單（make pve 會自動接著做）"
+        step "完成。接著設定密碼、放題目、產生連線清單（make deploy 會自動接著做）"
     fi
 }
 

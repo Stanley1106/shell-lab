@@ -15,7 +15,7 @@ class ConnectCardsTest(unittest.TestCase):
             "student01\tssh student@192.0.2.1 -p 22001\nstudent02\tssh student@192.0.2.1 -p 22002\n"
         )
         cards = build_connect_cards(TWO, commands, {"student01": "aaaa-bbbb-cccc", "student02": "dddd-eeee-ffff"})
-        path = scratch_dir() / "pve-cards.md"
+        path = scratch_dir() / "cards.md"
         write_connect_markdown(path, cards)
         text = path.read_text(encoding="utf-8")
         self.assertIn("- student02\n  ```\n  ssh student@192.0.2.1 -p 22002\n  ```\n  - 密碼 `dddd-eeee-ffff`", text)

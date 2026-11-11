@@ -7,10 +7,10 @@ from labctl.guest import PACKAGES
 from labctl.pve import (
     ACCESS_SETTINGS,
     DEFAULTS,
-    build_pve_config,
-    build_pve_plan,
+    build_config,
+    build_plan,
     ct_fields,
-    load_pve_config,
+    load_config,
     render_access,
     render_guest_setup,
     render_network,
@@ -25,10 +25,10 @@ REQUIRED = {"PORTFORWARD_SOURCES": "198.51.100.0/24"}
 
 
 def config(**values):
-    return build_pve_config({**REQUIRED, **values})
+    return build_config({**REQUIRED, **values})
 
 
-def write_pve_env(mode=0o600, **values):
+def write_env(mode=0o600, **values):
     path = scratch_dir() / ".env"
     path.write_text("".join(f"{k}={v}\n" for k, v in {**REQUIRED, **values}.items()), encoding="utf-8")
     path.chmod(mode)
@@ -39,7 +39,7 @@ def labctl(*args):
     return subprocess.run([sys.executable, "-m", "labctl", *map(str, args)], cwd=REPO, capture_output=True, text=True)
 
 
-class PveSettingsTest(unittest.TestCase):
+class SettingsTest(unittest.TestCase):
     def test_defaults_need_only_the_access_sources(self):
         c = config()
         self.assertEqual(c.student_count, 20)
@@ -49,7 +49,7 @@ class PveSettingsTest(unittest.TestCase):
 
     def test_access_sources_are_required(self):
         with self.assertRaises(ValueError) as ctx:
-            build_pve_config({})
+            build_config({})
         self.assertIn("PORTFORWARD_SOURCES", str(ctx.exception))
 
     def test_every_source_is_allowed_only_when_written_out(self):
@@ -100,11 +100,11 @@ class PveSettingsTest(unittest.TestCase):
 
     def test_file_with_a_secret_must_be_private(self):
         with self.assertRaises(ValueError):
-            load_pve_config(write_pve_env(mode=0o644, LAB_SECRET=SECRET_HEX))
-        self.assertEqual(load_pve_config(write_pve_env(LAB_SECRET=SECRET_HEX)).lab_secret, bytes.fromhex(SECRET_HEX))
+            load_config(write_env(mode=0o644, LAB_SECRET=SECRET_HEX))
+        self.assertEqual(load_config(write_env(LAB_SECRET=SECRET_HEX)).lab_secret, bytes.fromhex(SECRET_HEX))
 
 
-class PveExampleTest(unittest.TestCase):
+class ExampleTest(unittest.TestCase):
     def test_example_lists_every_setting_once_in_order(self):
         # 範例檔列出所有設定，順序和程式裡的一樣，讀者才找得到每個值。
         keys = list(parse_env(EXAMPLE.read_text(encoding="utf-8")))
@@ -119,12 +119,12 @@ class PveExampleTest(unittest.TestCase):
 
     def test_example_loads_once_the_sources_are_filled_in(self):
         values = parse_env(EXAMPLE.read_text(encoding="utf-8"))
-        self.assertEqual(build_pve_config({**values, **REQUIRED}).student_count, 20)
+        self.assertEqual(build_config({**values, **REQUIRED}).student_count, 20)
 
 
-class PvePlanTest(unittest.TestCase):
+class PlanTest(unittest.TestCase):
     def test_each_student_gets_a_ctid_address_and_port(self):
-        plan = build_pve_plan(config(STUDENT_COUNT="3"))
+        plan = build_plan(config(STUDENT_COUNT="3"))
         self.assertEqual(plan["students"], ["student01", "student02", "student03"])
         first, last = plan["instances"][0], plan["instances"][-1]
         self.assertEqual((first["ctid"], first["address"], first["access"]["port"]), (201, "10.10.10.2", 22001))
@@ -133,11 +133,11 @@ class PvePlanTest(unittest.TestCase):
         self.assertEqual(first["hostname"], "lab-student01")  # 第 1 題檢查這個名稱
 
     def test_selected_students_keep_their_own_numbers(self):
-        plan = build_pve_plan(config(STUDENT_COUNT="3"), ["student03"])
+        plan = build_plan(config(STUDENT_COUNT="3"), ["student03"])
         self.assertEqual([i["ctid"] for i in plan["instances"]], [203])
 
     def test_fields_for_shell_scripts(self):
-        instance = build_pve_plan(config(), ["student02"])["instances"][0]
+        instance = build_plan(config(), ["student02"])["instances"][0]
         self.assertEqual(ct_fields(instance, ["ctid", "address", "port"]), ["202", "10.10.10.3", "22002"])
         with self.assertRaises(ValueError):
             ct_fields(instance, ["student_id"])
@@ -262,19 +262,19 @@ class GuestSetupTest(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
 
 
-class PveCommandTest(unittest.TestCase):
+class CommandTest(unittest.TestCase):
     def test_check_and_plan(self):
-        env = write_pve_env(STUDENT_COUNT="2")
-        result = labctl("--env", env, "pve", "check")
+        env = write_env(STUDENT_COUNT="2")
+        result = labctl("--env", env, "check")
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("2 containers, access mode portforward", result.stdout)
-        plan = json.loads(labctl("--env", env, "pve", "plan").stdout)
+        plan = json.loads(labctl("--env", env, "plan").stdout)
         self.assertEqual(plan["students"], ["student01", "student02"])
-        self.assertEqual(labctl("--env", env, "pve", "ct", "student02", "ctid", "port").stdout, "202 22002\n")
+        self.assertEqual(labctl("--env", env, "ct", "student02", "ctid", "port").stdout, "202 22002\n")
 
     def test_errors_exit_nonzero(self):
-        env = write_pve_env(STUDENT_COUNT="2")
-        result = labctl("--env", env, "pve", "ct", "student09", "ctid")
+        env = write_env(STUDENT_COUNT="2")
+        result = labctl("--env", env, "ct", "student09", "ctid")
         self.assertEqual(result.returncode, 2)
         self.assertIn("ERROR", result.stderr)
 
