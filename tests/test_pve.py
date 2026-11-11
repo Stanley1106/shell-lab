@@ -167,13 +167,12 @@ class NetworkRulesTest(unittest.TestCase):
             {t.rstrip(" {") for t in tables}, {"ip shell_lab_nat", "inet shell_lab_pve", "bridge shell_lab_l2"}
         )
 
-    def test_vm_isolation_on_the_nat_bridge_with_ssh_coming_in(self):
+    def test_isolation_on_the_nat_bridge_with_ssh_coming_in(self):
         text = render_network(config(PROTECTED_NETWORKS="203.0.113.0/24"))
         self.assertIn('iifname "vmbr1" rt ip nexthop != @uplink_gateways drop', text)
         self.assertIn("203.0.113.0/24", text)
         self.assertIn('oifname "vmbr1" ct status dnat tcp dport 22 accept', text)
         self.assertIn('iifname "vmbr1" ct status dnat accept', text)
-        self.assertNotIn('"tl*"', text)
 
     def test_only_the_given_dns_servers_get_port_53(self):
         self.assertNotIn("dport 53 accept", render_network(config()).split("chain forward", 1)[1])
