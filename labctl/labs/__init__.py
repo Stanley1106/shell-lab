@@ -43,6 +43,8 @@ LABS = [
 OVERVIEW = """\
 # Linux Lab
 
+還沒跟小壹打過招呼的話，先輸入 `hello`。
+
 每一題一個資料夾，先進資料夾看說明：
 
     cd ~/lab/01-check-in
