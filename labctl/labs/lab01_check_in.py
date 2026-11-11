@@ -1,4 +1,4 @@
-"""Lab 01: read the prompt, run whoami/hostname, pass arguments to a program."""
+"""Lab 01: run whoami and hostname, and pass arguments to a program. The prompt is explained by hello."""
 
 from labctl.guest import guest_hostname
 from labctl.labs import art
@@ -11,18 +11,9 @@ FLAG = "whoami_is_a_deep_question"
 README = """\
 # 01 新朋友報到
 
-歡迎來到蛛網！這是你第一天「上網」。負責接待的前輩小壹想先知道你的名字和住處，才能幫你做名牌。
+這是你在蛛網的第一天。剛剛跟你打招呼的小壹，想先知道你的名字和住處，才能幫你做名牌。
 
-你已經成功登入自己的 Linux。畫面最左邊的這一串叫「提示字元」：
-
-    student@lab-studentXX:~$
-
-- `student`：你的帳號
-- `lab-studentXX`：這台主機的名稱，`XX` 是你的編號
-- `~`：你現在所在的位置，`~` 代表你的家目錄
-- `$`：表示你是一般使用者，管理員 root 的提示字元結尾是 `#`
-
-看到提示字元，就表示可以輸入指令了。
+提示字元和每一題都會用到的指令，忘了的話隨時輸入 `hello` 再看一次。
 
 ## 你要做的事
 
@@ -33,14 +24,6 @@ README = """\
        ./check 帳號 主機名稱
 
    答對就會顯示 flag。
-
-## 每一題都會用到的指令
-
-- `ls`：看看這裡有什麼。
-- `cd 資料夾`：走進資料夾。`cd ..` 回到上一層。
-- `pwd`：顯示你現在在哪裡。
-- `cat 檔案`：讀檔案內容，你剛剛就是這樣讀到這份說明的。
-- `./check`：執行這裡的程式。`./` 的意思是「就在這裡」。
 
 ## 提示
 
