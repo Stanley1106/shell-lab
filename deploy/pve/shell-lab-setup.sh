@@ -145,7 +145,8 @@ Type=oneshot
 RemainAfterExit=yes
 ExecStart=/usr/sbin/sysctl -q -w net.ipv4.ip_forward=1
 ExecStart=/usr/sbin/nft -f $NETWORK_RULES
-ExecStartPost=-/usr/bin/systemctl start $SYNC_UNIT.service
+# 直接同步一次，不透過 systemctl：閘道同步服務排在這個服務之後（After=），在這裡等它會互相卡住。
+ExecStartPost=-/bin/sh -c '$(sync_command)'
 
 [Install]
 WantedBy=multi-user.target
