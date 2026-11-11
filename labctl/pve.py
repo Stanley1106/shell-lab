@@ -1,4 +1,4 @@
-"""PVE LXC deployment: settings in deploy/pve/shell-lab.env and the per-student container plan.
+"""PVE LXC deployment: the settings in .env and the per-student container plan.
 
 Every key has a default except the access mode's required ones; unknown keys are refused so a typo
 never silently keeps a default.
@@ -41,7 +41,7 @@ from labctl.settings import (
     student_ids,
 )
 
-# 和 deploy/pve/shell-lab.env.example 的順序相同。
+# 和 .env.example 的順序相同。
 DEFAULTS = {
     "PVE_SSH": "",
     "COHORT": "shell-lab",
@@ -120,7 +120,7 @@ class PveConfig:
 def load_pve_config(path):
     path = Path(path)
     if not path.is_file():
-        raise ValueError(f"{path} not found, copy it from deploy/pve/shell-lab.env.example")
+        raise ValueError(f"{path} not found, create it with: make pve-env")
     values = parse_env(path.read_text(encoding="utf-8"))
     if any(values.get(k) for k in SECRET_KEYS):
         check_private(path)

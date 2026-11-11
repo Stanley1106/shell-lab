@@ -2,6 +2,7 @@
 
 import json
 import os
+import shutil
 import subprocess
 import sys
 import unittest
@@ -50,7 +51,7 @@ class PveScriptTest(unittest.TestCase):
         for name, text in (("pct", FAKE_PCT), ("id", FAKE_ID)):
             (bin_dir / name).write_text(text)
             (bin_dir / name).chmod(0o755)
-        env_file = self.dir / "shell-lab.env"
+        env_file = self.dir / ".env"
         env_file.write_text(
             f"STUDENT_COUNT=3\nLAB_SECRET={SECRET_HEX}\nPORTFORWARD_SOURCES=192.0.2.0/24\nPORTFORWARD_ADDRESS=192.0.2.1\n"
         )
@@ -168,8 +169,25 @@ class PveScriptTest(unittest.TestCase):
         self.assertNotIn("systemctl", post[0])
         self.assertIn("pve render-gateway-sync", post[0])
 
+    def test_settings_left_next_to_the_script_are_pointed_at_the_new_place(self):
+        # 舊版的設定檔在 deploy/pve/shell-lab.env；現在預設讀 repo 根目錄的 .env。
+        tree = scratch_dir()
+        shutil.copytree(REPO / "labctl", tree / "labctl", ignore=shutil.ignore_patterns("__pycache__"))
+        shutil.copytree(REPO / "deploy", tree / "deploy")
+        (tree / "deploy" / "pve" / "shell-lab.env").write_text("PORTFORWARD_SOURCES=192.0.2.0/24\n")
+        env = {k: v for k, v in self.env.items() if k != "ENV_FILE"}
+        result = subprocess.run(
+            ["bash", str(tree / "deploy" / "pve" / "shell-lab-setup.sh"), "--stop"],
+            env=env,
+            capture_output=True,
+            text=True,
+        )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn(f"mv {tree}/deploy/pve/shell-lab.env {tree}/.env", result.stderr)
+        self.assertEqual(self.calls(), [])
+
     def test_bad_settings_stop_before_touching_containers(self):
-        (self.dir / "shell-lab.env").write_text("STUDENT_COUNT=0\nPORTFORWARD_SOURCES=192.0.2.0/24\n")
+        (self.dir / ".env").write_text("STUDENT_COUNT=0\nPORTFORWARD_SOURCES=192.0.2.0/24\n")
         result = self.run_script("--passwords", stdin="student01 pass-one-aaaa\n")
         self.assertNotEqual(result.returncode, 0)
         self.assertEqual(self.calls(), [])

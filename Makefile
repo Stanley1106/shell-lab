@@ -11,12 +11,12 @@ PYTHON ?= python3
 help: ## 列出所有指令
 	@grep -E '^[a-z-]+:.*## ' $(firstword $(MAKEFILE_LIST)) | awk -F':.*## ' '{printf "  make %-12s %s\n", $$1, $$2}'
 
-# 設定在 deploy/pve/shell-lab.env。把腳本和設定送到 PVE 主機，以 root 執行（PVE_SSH 不是 root 時用 sudo）。
-PVE_ENV ?= deploy/pve/shell-lab.env
+# 設定在 .env。把程式和設定送到 PVE 主機，以 root 執行（PVE_SSH 不是 root 時用 sudo）。
+ENV ?= .env
 PVE_DIR ?= /opt/shell-lab/pve
-pve_get = $(shell sed -n 's/^$(1)=//p' $(PVE_ENV) 2>/dev/null)
+pve_get = $(shell sed -n 's/^$(1)=//p' $(ENV) 2>/dev/null)
 PVE_SSH := $(call pve_get,PVE_SSH)
-LABCTL_PVE := $(PYTHON) -m labctl --env $(PVE_ENV)
+LABCTL_PVE := $(PYTHON) -m labctl --env $(ENV)
 PVE_ROOT := s=; [ \$$(id -u) = 0 ] || s=sudo; \$$s
 PVE_SETUP := $(PVE_ROOT) $(PVE_DIR)/deploy/pve/shell-lab-setup.sh
 PVE_PASSWORDS := local/pve-passwords.json
@@ -32,24 +32,24 @@ define pve_write_cards
 	ssh $(PVE_SSH) "$(PVE_SETUP) --connect" | $(LABCTL_PVE) pve cards --passwords $(PVE_PASSWORDS) --out $(PVE_CARDS)
 endef
 
-pve-env: ## 從範例建立 deploy/pve/shell-lab.env，LAB_SECRET 自動產生
-	@if [ -e $(PVE_ENV) ]; then echo "$(PVE_ENV) already exists, not touched"; exit 0; fi; \
+pve-env: ## 從 .env.example 建立 .env，LAB_SECRET 自動產生
+	@if [ -e $(ENV) ]; then echo "$(ENV) already exists, not touched"; exit 0; fi; \
 	umask 077; \
 	secret=$$($(PYTHON) -c 'import secrets; print(secrets.token_hex(32))'); \
-	sed "s/^LAB_SECRET=$$/LAB_SECRET=$$secret/" deploy/pve/shell-lab.env.example >$(PVE_ENV); \
-	echo "created $(PVE_ENV), fill it in and run: make pve-dry-run"
+	sed "s/^LAB_SECRET=$$/LAB_SECRET=$$secret/" .env.example >$(ENV); \
+	echo "created $(ENV), fill it in and run: make pve-dry-run"
 
 pve-check:
-	@[ -f $(PVE_ENV) ] || { echo "$(PVE_ENV) not found, create it with: make pve-env" >&2; exit 1; }
-	@[ -n "$(PVE_SSH)" ] || { echo "set PVE_SSH in $(PVE_ENV)" >&2; exit 1; }
+	@[ -f $(ENV) ] || { echo "$(ENV) not found, create it with: make pve-env" >&2; exit 1; }
+	@[ -n "$(PVE_SSH)" ] || { echo "set PVE_SSH in $(ENV)" >&2; exit 1; }
 	@mkdir -p -m 700 local
 	@$(LABCTL_PVE) pve check
 
-# 送 labctl 和腳本，保持 repo 的目錄結構。主機上的設定檔在 deploy/pve，不會被覆蓋。
+# 送 labctl 和腳本，保持 repo 的目錄結構，設定放在 $(PVE_DIR)/.env。
 pve-upload: pve-check
 	tar -cz --exclude=__pycache__ labctl deploy/pve/shell-lab-setup.sh deploy/pve/access | ssh $(PVE_SSH) \
 		"$(PVE_ROOT) sh -c 'mkdir -p -m 700 $(PVE_DIR) && rm -rf $(PVE_DIR)/labctl $(PVE_DIR)/deploy/pve/access && tar -xz --no-same-owner -C $(PVE_DIR)'"
-	ssh $(PVE_SSH) "$(PVE_ROOT) sh -c 'umask 077 && cat >$(PVE_DIR)/deploy/pve/shell-lab.env'" <$(PVE_ENV)
+	ssh $(PVE_SSH) "$(PVE_ROOT) sh -c 'umask 077 && cat >$(PVE_DIR)/.env'" <$(ENV)
 
 pve-dry-run: pve-upload ## 預覽會做的事，不做任何變更
 	ssh $(PVE_SSH) "$(PVE_SETUP) --dry-run"
