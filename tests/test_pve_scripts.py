@@ -156,6 +156,18 @@ class PveScriptTest(unittest.TestCase):
             "ssh student@192.0.2.1 -p 22003\n  ```\n  - 密碼 `pass-word-0003`", out.read_text(encoding="utf-8")
         )
 
+    def test_network_unit_does_not_wait_on_a_unit_ordered_after_it(self):
+        # 閘道同步服務排在網路服務之後；網路服務啟動時若用 systemctl start 等它，兩邊互等，開機時容器也起不來。
+        render = (
+            f"source <(sed -n '/^network_unit() {{/,/^}}/p;/^sync_command() {{/,/^}}/p' {SCRIPT}); "
+            "NETWORK_RULES=/etc/shell-lab/pve-network.nft repo=/opt/shell-lab ENV_FILE=/opt/shell-lab/env; network_unit"
+        )
+        unit = subprocess.run(["bash", "-c", render], capture_output=True, text=True, check=True).stdout
+        post = [line for line in unit.splitlines() if line.startswith("ExecStartPost=")]
+        self.assertEqual(len(post), 1, unit)
+        self.assertNotIn("systemctl", post[0])
+        self.assertIn("pve render-gateway-sync", post[0])
+
     def test_bad_settings_stop_before_touching_containers(self):
         (self.dir / "shell-lab.env").write_text("STUDENT_COUNT=0\nPORTFORWARD_SOURCES=192.0.2.0/24\n")
         result = self.run_script("--passwords", stdin="student01 pass-one-aaaa\n")
