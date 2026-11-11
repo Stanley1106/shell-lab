@@ -260,6 +260,13 @@ class GuestSetupTest(unittest.TestCase):
         self.assertIn("chmod 0755 /usr/local/bin/hello", text)
         self.assertIn("我是小壹", text)
 
+    def test_login_message_only_points_at_hello(self):
+        text = render_guest_setup(config())
+        motd = text.split("cat >/etc/motd <<'SHELL_LAB_EOF'\n", 1)[1].split("\nSHELL_LAB_EOF", 1)[0]
+        self.assertIn("輸入 hello 開始", motd)
+        self.assertNotIn("小壹", motd)  # 人物等 hello 之後才登場
+        self.assertIn("find /etc/update-motd.d -type f -exec chmod a-x {} +", text)
+
     def test_no_secret_in_the_script(self):
         self.assertNotIn(SECRET_HEX, render_guest_setup(config(LAB_SECRET=SECRET_HEX)))
 

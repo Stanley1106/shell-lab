@@ -403,6 +403,7 @@ def _render_portforward(config):
 # 以及 locales 和 tzdata（套用 GUEST_LOCALE、GUEST_TIMEZONE）。
 GUEST_PACKAGES = [*PACKAGES, "nano", "locales", "tzdata"]
 _HEREDOC_END = "SHELL_LAB_EOF"
+LOGIN_MESSAGE = "\n歡迎來到 Linux Lab！輸入 hello 開始。\n"
 
 
 def _write_file(path, content, mode="0644"):
@@ -443,8 +444,10 @@ def render_guest_setup(config):
         *_write_file("/etc/ssh/sshd_config.d/00-shell-lab.conf", sshd_dropin()),
         *_write_file("/etc/profile.d/shell-lab-locale.sh", locale_profile(locale)),
         *_write_file("/etc/profile.d/shell-lab-rm.sh", RM_GUARD),
-        # 第 0 題：登入後輸入 hello。
+        # 第 0 題：登入後輸入 hello。登入訊息只說這一件事，Ubuntu 預設的動態訊息關掉，免得蓋過它。
         *_write_file("/usr/local/bin/hello", render_hello(), mode="0755"),
+        *_write_file("/etc/motd", LOGIN_MESSAGE),
+        "[ ! -d /etc/update-motd.d ] || find /etc/update-motd.d -type f -exec chmod a-x {} +",
         # 帳號先鎖住，密碼之後經 stdin 設定。
         "id student >/dev/null 2>&1 || useradd -m -s /bin/bash student",
         "usermod -aG sudo student" if config.student_sudo else "gpasswd -d student sudo >/dev/null 2>&1 || true",
