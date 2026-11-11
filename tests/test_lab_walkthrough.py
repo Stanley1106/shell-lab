@@ -10,6 +10,7 @@ import unicodedata
 import unittest
 from pathlib import Path
 
+from labctl.guest import guest_hostname
 from labctl.labs import (
     build_labs,
     full_flag,
@@ -27,7 +28,6 @@ from labctl.labs import (
     lab12_diff_config,
     lab13_git_history,
 )
-from labctl.plan import guest_hostname
 from tests.helpers import scratch_dir
 
 STUDENT = "student01"
