@@ -13,9 +13,9 @@ import subprocess
 import unittest
 
 from labctl.pve import (
-    build_pve_config,
+    build_config,
     render_access,
-    render_gateway_sync_pve,
+    render_gateway_sync,
     render_isolation,
     render_l2,
     render_nat,
@@ -40,7 +40,7 @@ def nft_env():
 
 
 def config(count):
-    return build_pve_config(
+    return build_config(
         {
             "STUDENT_COUNT": str(count),
             "PORTFORWARD_SOURCES": "192.0.2.10/32",
@@ -72,8 +72,8 @@ class ContainerNetworkInNetnsTest(unittest.TestCase):
             write(render_l2(two)) if l2 else "-",
             write(render_access(two)),
             write(render_access(one)),
-            write(render_gateway_sync_pve(["192.0.2.254"])),
-            write(render_gateway_sync_pve([])),
+            write(render_gateway_sync(["192.0.2.254"])),
+            write(render_gateway_sync([])),
         ]
         result = subprocess.run(
             [*NETNS, "bash", str(REPO / "tests" / "pve_netlab.sh"), *map(str, files)],

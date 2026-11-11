@@ -43,7 +43,7 @@ exec /usr/bin/id "$@"
 """
 
 
-class PveScriptTest(unittest.TestCase):
+class SetupScriptTest(unittest.TestCase):
     def setUp(self):
         self.dir = scratch_dir()
         bin_dir = self.dir / "bin"
@@ -145,7 +145,7 @@ class PveScriptTest(unittest.TestCase):
         cards = subprocess.run(
             [
                 *(sys.executable, "-m", "labctl", "--env", self.env["ENV_FILE"]),
-                *("pve", "cards", "--passwords", str(passwords), "--out", str(out)),
+                *("cards", "--passwords", str(passwords), "--out", str(out)),
             ],
             cwd=REPO,
             input=result.stdout,
@@ -167,7 +167,7 @@ class PveScriptTest(unittest.TestCase):
         post = [line for line in unit.splitlines() if line.startswith("ExecStartPost=")]
         self.assertEqual(len(post), 1, unit)
         self.assertNotIn("systemctl", post[0])
-        self.assertIn("pve render-gateway-sync", post[0])
+        self.assertIn("render gateway-sync", post[0])
 
     def test_settings_left_next_to_the_script_are_pointed_at_the_new_place(self):
         # 舊版的設定檔在 deploy/pve/shell-lab.env；現在預設讀 repo 根目錄的 .env。

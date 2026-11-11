@@ -1,87 +1,85 @@
-# 每個步驟一個指令。`make` 會列出所有指令。
+# 每個步驟一個指令，設定全部在 .env。`make` 會列出所有指令。
+# 程式和設定送到 PVE 主機的 PVE_DIR，以 root 執行（PVE_SSH 不是 root 時用 sudo）。
 SHELL := /bin/bash
 .SHELLFLAGS := -euo pipefail -c
 .DEFAULT_GOAL := help
 
+ENV ?= .env
 PYTHON ?= python3
+LABCTL := $(PYTHON) -m labctl --env $(ENV)
+PVE_DIR ?= /opt/shell-lab/pve
+PVE_SSH := $(shell sed -n 's/^PVE_SSH=//p' $(ENV) 2>/dev/null)
+ON_PVE := s=; [ \$$(id -u) = 0 ] || s=sudo; \$$s
+SETUP := $(ON_PVE) $(PVE_DIR)/deploy/pve/shell-lab-setup.sh
+PASSWORDS := local/passwords.json
+CARDS := local/cards.md
 
-.PHONY: help pve-env pve-check pve-upload pve-dry-run pve pve-passwords pve-labs pve-reset-lab pve-cards pve-stop \
-	pve-start pve-destroy test lint fmt
+.PHONY: help env check upload dry-run deploy passwords labs reset-lab cards stop start destroy test lint fmt
 
 help: ## 列出所有指令
-	@grep -E '^[a-z-]+:.*## ' $(firstword $(MAKEFILE_LIST)) | awk -F':.*## ' '{printf "  make %-12s %s\n", $$1, $$2}'
-
-# 設定在 .env。把程式和設定送到 PVE 主機，以 root 執行（PVE_SSH 不是 root 時用 sudo）。
-ENV ?= .env
-PVE_DIR ?= /opt/shell-lab/pve
-pve_get = $(shell sed -n 's/^$(1)=//p' $(ENV) 2>/dev/null)
-PVE_SSH := $(call pve_get,PVE_SSH)
-LABCTL_PVE := $(PYTHON) -m labctl --env $(ENV)
-PVE_ROOT := s=; [ \$$(id -u) = 0 ] || s=sudo; \$$s
-PVE_SETUP := $(PVE_ROOT) $(PVE_DIR)/deploy/pve/shell-lab-setup.sh
-PVE_PASSWORDS := local/pve-passwords.json
-PVE_CARDS := local/pve-cards.md
+	@grep -E '^[a-z-]+:.*## ' $(firstword $(MAKEFILE_LIST)) | awk -F':.*## ' '{printf "  make %-10s %s\n", $$1, $$2}'
 
 # 密碼存在本機（權限 600），經 ssh 的 stdin 送到主機，再經 stdin 設進容器。
-define pve_set_passwords
-	$(LABCTL_PVE) pve passwords-new --file $(PVE_PASSWORDS)
-	$(LABCTL_PVE) pve passwords-export --file $(PVE_PASSWORDS) | ssh $(PVE_SSH) "$(PVE_SETUP) --passwords"
+define set_passwords
+	$(LABCTL) passwords new --file $(PASSWORDS)
+	$(LABCTL) passwords export --file $(PASSWORDS) | ssh $(PVE_SSH) "$(SETUP) --passwords"
 endef
 
-define pve_write_cards
-	ssh $(PVE_SSH) "$(PVE_SETUP) --connect" | $(LABCTL_PVE) pve cards --passwords $(PVE_PASSWORDS) --out $(PVE_CARDS)
+# 連線指令由主機上的連線方式產生，在本機合併密碼。
+define write_cards
+	ssh $(PVE_SSH) "$(SETUP) --connect" | $(LABCTL) cards --passwords $(PASSWORDS) --out $(CARDS)
 endef
 
-pve-env: ## 從 .env.example 建立 .env，LAB_SECRET 自動產生
+env: ## 從 .env.example 建立 .env，LAB_SECRET 自動產生
 	@if [ -e $(ENV) ]; then echo "$(ENV) already exists, not touched"; exit 0; fi; \
 	umask 077; \
 	secret=$$($(PYTHON) -c 'import secrets; print(secrets.token_hex(32))'); \
 	sed "s/^LAB_SECRET=$$/LAB_SECRET=$$secret/" .env.example >$(ENV); \
-	echo "created $(ENV), fill it in and run: make pve-dry-run"
+	echo "created $(ENV), fill it in and run: make dry-run"
 
-pve-check:
-	@[ -f $(ENV) ] || { echo "$(ENV) not found, create it with: make pve-env" >&2; exit 1; }
+check: ## 檢查 .env
+	@[ -f $(ENV) ] || { echo "$(ENV) not found, create it with: make env" >&2; exit 1; }
 	@[ -n "$(PVE_SSH)" ] || { echo "set PVE_SSH in $(ENV)" >&2; exit 1; }
 	@mkdir -p -m 700 local
-	@$(LABCTL_PVE) pve check
+	@$(LABCTL) check
 
 # 送 labctl 和腳本，保持 repo 的目錄結構，設定放在 $(PVE_DIR)/.env。
-pve-upload: pve-check
+upload: check
 	tar -cz --exclude=__pycache__ labctl deploy/pve/shell-lab-setup.sh deploy/pve/access | ssh $(PVE_SSH) \
-		"$(PVE_ROOT) sh -c 'mkdir -p -m 700 $(PVE_DIR) && rm -rf $(PVE_DIR)/labctl $(PVE_DIR)/deploy/pve/access && tar -xz --no-same-owner -C $(PVE_DIR)'"
-	ssh $(PVE_SSH) "$(PVE_ROOT) sh -c 'umask 077 && cat >$(PVE_DIR)/.env'" <$(ENV)
+		"$(ON_PVE) sh -c 'mkdir -p -m 700 $(PVE_DIR) && rm -rf $(PVE_DIR)/labctl $(PVE_DIR)/deploy/pve/access && tar -xz --no-same-owner -C $(PVE_DIR)'"
+	ssh $(PVE_SSH) "$(ON_PVE) sh -c 'umask 077 && cat >$(PVE_DIR)/.env'" <$(ENV)
 
-pve-dry-run: pve-upload ## 預覽會做的事，不做任何變更
-	ssh $(PVE_SSH) "$(PVE_SETUP) --dry-run"
+dry-run: upload ## 預覽會做的事，不做任何變更
+	ssh $(PVE_SSH) "$(SETUP) --dry-run"
 
-pve: pve-upload ## 建立全部、設定密碼、放題目，連線清單寫到 local/pve-cards.md
-	ssh $(PVE_SSH) "$(PVE_SETUP)"
-	$(pve_set_passwords)
-	ssh $(PVE_SSH) "$(PVE_SETUP) --labs"
-	$(pve_write_cards)
+deploy: upload ## 建立全部、設定密碼、放題目，連線清單寫到 local/cards.md
+	ssh $(PVE_SSH) "$(SETUP)"
+	$(set_passwords)
+	ssh $(PVE_SSH) "$(SETUP) --labs"
+	$(write_cards)
 
-pve-passwords: pve-upload ## 替還沒有密碼的學生產生密碼，並設定到每台容器
-	$(pve_set_passwords)
+passwords: upload ## 替還沒有密碼的學生產生密碼，並設定到每台容器
+	$(set_passwords)
 
-pve-labs: pve-upload ## 把題目放進每台容器，~/lab 已經有東西的跳過
-	ssh $(PVE_SSH) "$(PVE_SETUP) --labs"
+labs: upload ## 把題目放進每台容器，~/lab 已經有東西的跳過
+	ssh $(PVE_SSH) "$(SETUP) --labs"
 
-pve-reset-lab: pve-upload ## 重設一位學生的一題：make pve-reset-lab STUDENT=student05 LAB=05-organize
+reset-lab: upload ## 重設一位學生的一題：make reset-lab STUDENT=student05 LAB=05-organize
 	@[[ "$(STUDENT)" =~ ^student[0-9]{2}$$ && "$(LAB)" =~ ^[0-9]{2}-[a-z0-9-]+$$ ]] || \
-		{ echo "usage: make pve-reset-lab STUDENT=student05 LAB=05-organize" >&2; exit 2; }
-	ssh $(PVE_SSH) "$(PVE_SETUP) --labs $(STUDENT) $(LAB)"
+		{ echo "usage: make reset-lab STUDENT=student05 LAB=05-organize" >&2; exit 2; }
+	ssh $(PVE_SSH) "$(SETUP) --labs $(STUDENT) $(LAB)"
 
-pve-cards: pve-upload ## 全部學生的連線指令和密碼，寫到 local/pve-cards.md
-	$(pve_write_cards)
+cards: upload ## 全部學生的連線指令和密碼，寫到 local/cards.md
+	$(write_cards)
 
-pve-stop: pve-upload ## 關閉所有容器（保留）
-	ssh $(PVE_SSH) "$(PVE_SETUP) --stop"
+stop: upload ## 關閉所有容器（保留）
+	ssh $(PVE_SSH) "$(SETUP) --stop"
 
-pve-start: pve-upload ## 啟動所有容器
-	ssh $(PVE_SSH) "$(PVE_SETUP) --start"
+start: upload ## 啟動所有容器
+	ssh $(PVE_SSH) "$(SETUP) --start"
 
-pve-destroy: pve-upload ## 刪除所有容器和轉發規則（要輸入 yes 確認），密碼檔保留
-	ssh -t $(PVE_SSH) "$(PVE_SETUP) --destroy"
+destroy: upload ## 刪除所有容器和主機上的網路設定（要輸入 yes 確認），密碼檔保留
+	ssh -t $(PVE_SSH) "$(SETUP) --destroy"
 
 test: ## 跑測試
 	$(PYTHON) -m unittest discover -s tests -t .

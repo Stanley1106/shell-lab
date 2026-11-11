@@ -9,7 +9,7 @@
 #   access_connect SID    印出這位學生的連線指令
 # 可以用 shell-lab-setup.sh 的 step/ok/warn/soft_die/run、labctl、STUDENTS 和 ct_info。
 #
-# 規則由 labctl pve render-access 產生：獨立的 nft table，一條規則查 map（埠 → 容器），
+# 規則由 labctl render access 產生：獨立的 nft table，一條規則查 map（埠 → 容器），
 # 整張 table 一次替換，重跑不會重複。開機時由 systemd 在容器啟動前載入。
 
 ACCESS_RULES=/etc/shell-lab/pve-access.nft
@@ -17,7 +17,7 @@ ACCESS_UNIT=shell-lab-pve-access.service
 ACCESS_TABLE="ip shell_lab_access"
 
 access_port() {
-    labctl pve ct "$1" port
+    labctl ct "$1" port
 }
 
 access_prepare() {
@@ -59,13 +59,13 @@ access_apply() {
     step "連接埠轉發 $PORTFORWARD_IFACE:$PORTFORWARD_PORT_START-$last → 容器:22（來源 $PORTFORWARD_SOURCES）"
     if $DRY_RUN; then
         printf '    %s[dry-run]%s 寫入 %s：\n' "$C_DIM" "$C_RESET" "$ACCESS_RULES"
-        labctl pve render-access | sed 's/^/        /'
+        labctl render access | sed 's/^/        /'
         printf '    %s[dry-run]%s 寫入 /etc/systemd/system/%s 並啟用：\n' "$C_DIM" "$C_RESET" "$ACCESS_UNIT"
         access_unit | sed 's/^/        /'
         return
     fi
     install -d -m 0700 "$(dirname "$ACCESS_RULES")"
-    labctl pve render-access >"$ACCESS_RULES.new"
+    labctl render access >"$ACCESS_RULES.new"
     nft -c -f "$ACCESS_RULES.new"
     mv "$ACCESS_RULES.new" "$ACCESS_RULES"
     access_unit >"/etc/systemd/system/$ACCESS_UNIT"
