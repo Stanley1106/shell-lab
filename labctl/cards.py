@@ -3,10 +3,10 @@
 import ipaddress
 import re
 
-from labctl.config import select_students
 from labctl.keys import SETUP_KEY
 from labctl.passwords import PASSWORD
 from labctl.private import write_private
+from labctl.settings import select_students
 
 MANAGEMENT_URL = re.compile(r"https://[A-Za-z0-9.-]+(:[0-9]{1,5})?/?")
 

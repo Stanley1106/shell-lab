@@ -11,6 +11,34 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from labctl.private import check_private
+from labctl.settings import (
+    COHORT as _COHORT,
+)
+from labctl.settings import (
+    FLAG_PREFIX as _FLAG_PREFIX,
+)
+from labctl.settings import (
+    LOCALE as _LOCALE,
+)
+from labctl.settings import (
+    MAX_STUDENTS,
+    SECRET_BYTES,
+    parse_env,
+    student_ids,
+)
+from labctl.settings import (
+    SECRET as _SECRET,
+)
+from labctl.settings import (
+    SSH_TARGET as _SSH_TARGET,
+)
+from labctl.settings import (
+    TIMEZONE as _TIMEZONE,
+)
+from labctl.settings import integer as _integer
+from labctl.settings import items as _items
+from labctl.settings import match as _match
+from labctl.settings import network as _network
 
 REPO = Path(__file__).resolve().parent.parent
 VERSIONS_FILE = REPO / "versions.lock.json"
@@ -47,22 +75,13 @@ GUEST_IMAGES = {
     "ubuntu-26.04": "images:ubuntu/26.04/cloud",
     "ubuntu-24.04": "images:ubuntu/24.04/cloud",
 }
-MAX_STUDENTS = 99
 SUBNET_PREFIX = 28  # 每台 VM 一個 /28
-SECRET_BYTES = 32
 
-_KEY = re.compile(r"[A-Z][A-Z0-9_]*")
 _UNSAFE_VALUE = re.compile(r"[\s'\"#$`\\]")  # Make 和 shell 會改寫這些字元
-_COHORT = re.compile(r"[a-z][a-z0-9-]{0,23}")
 _DEVICE = re.compile(r"[a-z0-9](?:[a-z0-9-]{0,30}[a-z0-9])?")
 _DOMAIN = re.compile(r"(?=.{4,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}")
-_SSH_TARGET = re.compile(r"[A-Za-z0-9._-]+@[A-Za-z0-9.-]+")
 _EMAIL = re.compile(r"[^@\s]+@[^@\s]+\.[^@\s]+")
 _TOKEN = re.compile(r"[A-Za-z0-9_-]{8,200}")
-_SECRET = re.compile(r"[0-9a-f]{64}")
-_FLAG_PREFIX = re.compile(r"[A-Za-z0-9_-]{1,32}")
-_LOCALE = re.compile(r"C\.UTF-8|[a-z]{2,3}_[A-Z]{2}\.UTF-8")
-_TIMEZONE = re.compile(r"UTC|[A-Z][A-Za-z_]+(?:/[A-Z][A-Za-z0-9_+-]*){1,2}")
 _PRIVATE_V4 = [ipaddress.ip_network(n) for n in ("10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16")]
 
 
@@ -107,39 +126,9 @@ class Config:
         return student_ids(self.student_count)
 
 
-def student_ids(count):
-    return [f"student{n:02d}" for n in range(1, count + 1)]
-
-
-def select_students(students, selected):
-    """`students` in their own order, limited to `selected` (None means everyone)."""
-    if selected is None:
-        return list(students)
-    if len(selected) != len(set(selected)) or not set(selected) <= set(students):
-        raise ValueError("student selection contains duplicates or unknown ids")
-    return [s for s in students if s in set(selected)]
-
-
 def netbird_version():
     """NetBird client version, the same release as the pinned server."""
     return json.loads(VERSIONS_FILE.read_text(encoding="utf-8"))["netbird_release"].removeprefix("v")
-
-
-def parse_env(text):
-    values = {}
-    for number, raw in enumerate(text.splitlines(), 1):
-        line = raw.strip()
-        if not line or line.startswith("#"):
-            continue
-        key, sep, value = line.partition("=")
-        if not sep or not _KEY.fullmatch(key):
-            raise ValueError(f"line {number} must look like KEY=VALUE: {raw!r}")
-        if key in values:
-            raise ValueError(f"{key} is set twice (line {number})")
-        if _UNSAFE_VALUE.search(value):
-            raise ValueError(f"{key} must not contain spaces, quotes, #, $, ` or \\ (line {number})")
-        values[key] = value
-    return values
 
 
 def load_config(path):
@@ -236,29 +225,3 @@ def _build(v):
         vm_network_pool=pool,
         protected_networks=protected,
     )
-
-
-def _items(value):
-    return [item for item in value.split(",") if item]
-
-
-def _match(key, v, pattern, expected):
-    if not pattern.fullmatch(v[key]):
-        raise ValueError(f"{key} must be {expected}, got {v[key]!r}")
-    return v[key]
-
-
-def _integer(key, v, minimum, maximum):
-    if not re.fullmatch(r"[0-9]+", v[key]) or not minimum <= int(v[key]) <= maximum:
-        raise ValueError(f"{key} must be an integer from {minimum} to {maximum}")
-    return int(v[key])
-
-
-def _network(key, value):
-    try:
-        network = ipaddress.ip_network(value, strict=True)
-    except ValueError:
-        raise ValueError(f"{key}: {value!r} is not a network such as 10.231.0.0/16") from None
-    if network.version != 4:
-        raise ValueError(f"{key} accepts IPv4 only (VMs have no IPv6): {network}")
-    return network
