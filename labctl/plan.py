@@ -5,6 +5,7 @@ import ipaddress
 
 from labctl.config import SUBNET_PREFIX, select_students
 from labctl.firewall import BRIDGE_PREFIX
+from labctl.guest import guest_hostname
 
 VM_FIELDS = (
     "name",
@@ -28,11 +29,6 @@ def vm_name(cohort, sid):
 def groups(cohort, sid):
     """NetBird groups of one student, the same names Terraform creates."""
     return {"client": f"{cohort}-client-{sid}", "vm": f"{cohort}-vm-{sid}"}
-
-
-def guest_hostname(sid):
-    """Hostname inside the VM, shown in the prompt and checked by lab 01."""
-    return f"lab-{sid}"
 
 
 def bridge_name(cohort, sid):

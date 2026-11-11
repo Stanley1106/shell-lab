@@ -1,8 +1,8 @@
 """Lab 01: read the prompt, run whoami/hostname, pass arguments to a program."""
 
+from labctl.guest import guest_hostname
 from labctl.labs import art
 from labctl.labs.answer_check import render_check
-from labctl.plan import guest_hostname
 
 LAB_ID = "01-check-in"
 TITLE = "新朋友報到"

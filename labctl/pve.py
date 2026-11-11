@@ -11,13 +11,6 @@ import shlex
 from dataclasses import dataclass
 from pathlib import Path
 
-from labctl.cloudinit import (
-    CHINESE_PACKAGES,
-    PACKAGES,
-    SWITCH_TO_GNU_COREUTILS,
-    _locale_profile,
-    _sshd_dropin,
-)
 from labctl.config import (
     _COHORT,
     _FLAG_PREFIX,
@@ -35,8 +28,15 @@ from labctl.config import (
     student_ids,
 )
 from labctl.firewall import render_gateway_sync, render_ruleset
+from labctl.guest import (
+    CHINESE_PACKAGES,
+    PACKAGES,
+    SWITCH_TO_GNU_COREUTILS,
+    guest_hostname,
+    locale_profile,
+    sshd_dropin,
+)
 from labctl.labs.lab05_organize import RM_GUARD
-from labctl.plan import guest_hostname
 from labctl.private import check_private
 
 # 和 deploy/pve/shell-lab.env.example 的順序相同。
@@ -450,8 +450,8 @@ def render_guest_setup(config):
     lines += [
         f"ln -sf /usr/share/zoneinfo/{config.guest_timezone} /etc/localtime",
         f"echo {config.guest_timezone} >/etc/timezone",
-        *_write_file("/etc/ssh/sshd_config.d/00-shell-lab.conf", _sshd_dropin()),
-        *_write_file("/etc/profile.d/shell-lab-locale.sh", _locale_profile(locale)),
+        *_write_file("/etc/ssh/sshd_config.d/00-shell-lab.conf", sshd_dropin()),
+        *_write_file("/etc/profile.d/shell-lab-locale.sh", locale_profile(locale)),
         *_write_file("/etc/profile.d/shell-lab-rm.sh", RM_GUARD),
         # 帳號先鎖住，密碼之後經 stdin 設定。
         "id student >/dev/null 2>&1 || useradd -m -s /bin/bash student",
