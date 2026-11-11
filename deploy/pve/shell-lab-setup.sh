@@ -12,8 +12,8 @@
 #   --start       啟動所有容器
 #   --destroy     刪除所有容器、連線方式和容器網路，主機恢復原狀（需要確認）
 #
-# 設定：同目錄的 shell-lab.env（從 shell-lab.env.example 複製），由 labctl 檢查並補上預設值。
-# 也可以用 ENV_FILE=路徑 指定別的設定檔。labctl 在這支腳本往上兩層的目錄（repo 根目錄）。
+# 設定：repo 根目錄的 .env（make pve-env 或從 .env.example 複製），由 labctl 檢查並補上預設值。
+# 也可以用 ENV_FILE=路徑 指定別的設定檔。labctl 也在 repo 根目錄，也就是這支腳本往上兩層。
 set -euo pipefail
 # 不沿用呼叫者的 umask：umask 077 時 pct create 建出只有主機 root 讀得到的根目錄，
 # unprivileged 容器的對應帳號解不開樣板。要保密的目錄都另外明確設定權限。
@@ -21,7 +21,7 @@ umask 022
 
 here=$(dirname "$(readlink -f "$0")")
 repo=$(readlink -f "$here/../..")
-ENV_FILE=$(readlink -f "${ENV_FILE:-$here/shell-lab.env}")
+ENV_FILE=$(readlink -f "${ENV_FILE:-$repo/.env}")
 
 INTERFACES=/etc/network/interfaces
 BRIDGE_FILE=/etc/network/interfaces.d/shell-lab
@@ -73,6 +73,10 @@ load_settings() {
     local settings
     command -v python3 >/dev/null || die "找不到 python3，請先安裝：apt install python3"
     [ -f "$repo/labctl/pve.py" ] || die "找不到 $repo/labctl，請把整個 repo（至少 labctl/ 和 deploy/pve/）放在一起"
+    # 舊版的設定檔放在這支腳本旁邊。
+    if [ ! -e "$ENV_FILE" ] && [ -f "$here/shell-lab.env" ]; then
+        die "設定檔改放在 repo 根目錄的 .env，請執行：mv $here/shell-lab.env $repo/.env"
+    fi
     settings=$(labctl pve settings) || die "設定檔 $ENV_FILE 有問題，見上面的錯誤訊息"
     # labctl 只輸出檢查過的 KEY=value，值裡沒有空白、引號或 $。
     eval "$settings"

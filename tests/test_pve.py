@@ -19,7 +19,7 @@ from labctl.pve import (
 from labctl.settings import parse_env
 from tests.helpers import REPO, SECRET_HEX, scratch_dir
 
-EXAMPLE = REPO / "deploy" / "pve" / "shell-lab.env.example"
+EXAMPLE = REPO / ".env.example"
 
 REQUIRED = {"PORTFORWARD_SOURCES": "198.51.100.0/24"}
 
@@ -29,7 +29,7 @@ def config(**values):
 
 
 def write_pve_env(mode=0o600, **values):
-    path = scratch_dir() / "shell-lab.env"
+    path = scratch_dir() / ".env"
     path.write_text("".join(f"{k}={v}\n" for k, v in {**REQUIRED, **values}.items()), encoding="utf-8")
     path.chmod(mode)
     return path

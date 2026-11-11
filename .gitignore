@@ -6,9 +6,8 @@ local/
 *.pem
 *.key
 
-# PVE 部署方案（deploy/pve）：設定檔、含明碼密碼的連線資訊、紀錄檔。
+# 舊版放在 deploy/pve 的設定檔，以及紀錄檔。
 *.env
-*-credentials.txt
 *.log
 
 # 只放在自己電腦上的測試。

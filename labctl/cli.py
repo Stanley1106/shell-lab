@@ -104,7 +104,7 @@ def build_parser():
         sub.set_defaults(func=func)
         return sub
 
-    pve = group("pve", "PVE LXC deployment (--env deploy/pve/shell-lab.env)")
+    pve = group("pve", "PVE LXC deployment")
     command(pve, "check", cmd_pve_check, "validate every setting")
     command(pve, "settings", cmd_pve_settings, "print the settings as KEY=value lines, without LAB_SECRET")
     command(pve, "students", cmd_pve_students, "print every student id")
