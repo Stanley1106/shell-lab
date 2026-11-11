@@ -3,7 +3,7 @@ import subprocess
 import sys
 import unittest
 
-from labctl.cloudinit import PACKAGES as VM_PACKAGES
+from labctl.guest import PACKAGES
 from labctl.pve import (
     ACCESS_SETTINGS,
     DEFAULTS,
@@ -213,10 +213,10 @@ class GuestSetupTest(unittest.TestCase):
         install = next(line for line in text.splitlines() if line.startswith("apt-get install"))
         return set(install.split()[install.split().index("DPkg::Lock::Timeout=300") + 1 :])
 
-    def test_installs_the_same_tools_as_the_vms(self):
-        # 學生在兩種部署裡拿到一樣的工具，例如 tree、unzip、xxd、curl。
+    def test_installs_the_shared_package_list(self):
+        # 學生需要的工具都在 labctl/guest.py 的清單裡，例如 tree、unzip、xxd、curl。
         packages = self.installed()
-        self.assertLessEqual(set(VM_PACKAGES), packages)
+        self.assertLessEqual(set(PACKAGES), packages)
         self.assertLessEqual({"tree", "unzip", "xxd", "curl"}, packages)
 
     def test_installs_what_the_labs_use(self):

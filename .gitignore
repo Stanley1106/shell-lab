@@ -3,10 +3,6 @@
 .env.*
 !.env.example
 local/
-*.tfstate
-*.tfstate.*
-*.tfvars
-.terraform/
 *.pem
 *.key
 

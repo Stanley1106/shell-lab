@@ -391,8 +391,8 @@ destroy_one() {
 list_one() { printf '      CT %s  %s\n' "$CTID" "$CT_NAME"; }
 
 # ---- 題目 ----
-# 和 NetBird 版的 host/seed-labs.sh 一樣：在主機上以 root 產生（第 11 題有只有 root 讀得到的檔案），
-# 以學生的身分解開，學生在 ~/lab 裡放的連結就指不到別的地方。~/lab 已經有東西就跳過，不覆蓋作業；
+# 在主機上以 root 產生（第 11 題有只有 root 讀得到的檔案），以學生的身分解開，
+# 學生在 ~/lab 裡放的連結就指不到別的地方。~/lab 已經有東西就跳過，不覆蓋作業；
 # 指定一題時只重設那一題，舊的資料夾改名留在 ~/lab。題目資料由 LAB_SECRET 推導，每次產生的都一樣。
 ensure_git() {
     command -v git >/dev/null && return

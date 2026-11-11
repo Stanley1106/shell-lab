@@ -36,7 +36,7 @@ def ensure(path, students, rng=None):
 
 
 def export_lines(path, students):
-    """`sid password` lines, the input of host/set-password.sh all."""
+    """`sid password` lines, the input of shell-lab-setup.sh --passwords."""
     data = load(path)
     bad = [sid for sid in students if not (isinstance(data.get(sid), str) and PASSWORD.fullmatch(data[sid]))]
     if bad:
