@@ -11,7 +11,13 @@ import shlex
 from dataclasses import dataclass
 from pathlib import Path
 
-from labctl.cloudinit import CHINESE_PACKAGES, SWITCH_TO_GNU_COREUTILS, _locale_profile, _sshd_dropin
+from labctl.cloudinit import (
+    CHINESE_PACKAGES,
+    PACKAGES,
+    SWITCH_TO_GNU_COREUTILS,
+    _locale_profile,
+    _sshd_dropin,
+)
 from labctl.config import (
     _COHORT,
     _FLAG_PREFIX,
@@ -403,9 +409,9 @@ def _render_portforward(config):
     )
 
 
-# 題目用到的程式：python3（互動程式和判斷答案）、man 和 less（第 2、8 題）、file（第 7 題）、
-# git（第 13 題）、vim 或 nano（第 12 題）。tar、gzip、diff、ps、find 等樣板本來就有。
-GUEST_PACKAGES = ["openssh-server", "python3", "man-db", "less", "file", "git", "vim", "nano", "locales", "tzdata"]
+# 和 VM 的 cloud-init 同一份清單，兩種部署給學生的工具一樣。後面幾個是 VM 映像本來就有、
+# 而 LXC 樣板不一定有的：nano（第 12 題可以用）、locales 和 tzdata（套用 GUEST_LOCALE、GUEST_TIMEZONE）。
+GUEST_PACKAGES = [*PACKAGES, "nano", "locales", "tzdata"]
 _HEREDOC_END = "SHELL_LAB_EOF"
 
 
