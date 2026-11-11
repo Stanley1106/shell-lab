@@ -1,9 +1,10 @@
 # 題目
 
-13 題命令列練習，程式在 `labctl/labs/`。題號就是上課的順序，章節順序參考 pwn.college 的 Linux Luminarium，每章講完就做那一章的題目。
+13 題命令列練習，加上登入後的第 0 題，程式在 `labctl/labs/`。題號就是上課的順序，章節順序參考 pwn.college 的 Linux Luminarium，每章講完就做那一章的題目。
 
 | 題號 | 章節 | 題目 | 練習的指令 | 怎麼算解開 |
 |---|---|---|---|---|
+| 00 | 環境準備 | 跟小壹打招呼 | 第一個指令、提示字元、`ls`、`cd`、`pwd`、`cat` | 登入後輸入 `hello`。沒有 flag，只有蜘蛛圖 |
 | 01 | 環境準備 | 新朋友報到 | `whoami`、`hostname`、參數 | 把帳號和主機名稱交給 `check` |
 | 02 | 環境準備 | 蛛絲電話 | `--help`、`man`、長短選項 | 從 man page 找到線路，用 `phone` 接線並解碼 |
 | 03 | 路徑與目錄 | 送信到樹洞 | `pwd`、`cd`、絕對和相對路徑 | 在森林裡找到信箱，站在郵局用絕對路徑呼叫它 |
@@ -19,6 +20,8 @@
 | 13 | 版本控制 | 不小心寫下的密碼 | `git log`、`git show` | 在這題的 git repo 裡找到舊版本 |
 
 ## 學生拿到什麼
+
+學生登入後只會看到一行「輸入 hello 開始」。`hello` 是第 0 題：小壹出來打招呼，說明提示字元和每一題都會用到的指令，最後告訴學生用 `cd ~/lab` 進到題目。它裝在容器的 `/usr/local/bin/hello`，不在 `~/lab` 裡，隨時可以再輸入一次。
 
 每個學生的 `~/lab/` 有一份總覽 `README.md`，每題一個資料夾，裡面的 `README.md` 寫故事、要做的事和提示。檔名用英文，因為學生在終端機裡不一定打得出中文。
 
@@ -67,6 +70,7 @@ python3 -m labctl labs flags
 |---|---|
 | `labctl/labs/labNN_*.py` | 一題一個模組：`LAB_ID`、`TITLE`、`FLAG`、說明 `README` 和產生資料的 `seed()` |
 | `labctl/labs/__init__.py` | 題目順序和總覽說明 |
+| `labctl/labs/hello.py` | 第 0 題 `hello` 印出的內容 |
 | `labctl/labs/workspace.py` | 只能寫進那一題的資料夾，檔案權限寫死，不受 umask 影響 |
 | `labctl/labs/flags.py` | 用 `LAB_SECRET` 推出資料的亂數種子 |
 | `labctl/labs/art.py` | 答對時印出的點陣圖，和題目裡的物品圖 |

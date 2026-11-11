@@ -34,7 +34,7 @@ ssh student@203.0.113.10 -p 22005
 
 1. 第一次連線會問 `Are you sure you want to continue connecting (yes/no)?`，輸入 `yes`。
 2. 輸入密碼。**打字時畫面不會顯示任何東西，這是正常的**，打完按 Enter。
-3. 看到 `student@lab-studentXX:~$` 就登入成功了。題目在 `~/lab`：輸入 `cat ~/lab/README.md` 開始。
+3. 看到 `student@lab-studentXX:~$` 就登入成功了。輸入 `hello`，接下來怎麼做，小壹會告訴你。
 
 離開：輸入 `exit`。下次上課再執行同一行連線指令就好。
 
