@@ -254,6 +254,12 @@ class GuestSetupTest(unittest.TestCase):
         lines = render_guest_setup(config(GUEST_LOCALE="zh_TW.UTF-8")).splitlines()
         self.assertLess(lines.index("export LANG=C.UTF-8 LC_ALL=C.UTF-8"), lines.index("apt-get update -q"))
 
+    def test_installs_the_hello_command(self):
+        text = render_guest_setup(config())
+        self.assertIn("cat >/usr/local/bin/hello <<'SHELL_LAB_EOF'", text)
+        self.assertIn("chmod 0755 /usr/local/bin/hello", text)
+        self.assertIn("我是小壹", text)
+
     def test_no_secret_in_the_script(self):
         self.assertNotIn(SECRET_HEX, render_guest_setup(config(LAB_SECRET=SECRET_HEX)))
 

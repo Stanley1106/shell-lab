@@ -21,6 +21,7 @@ from labctl.guest import (
     locale_profile,
     sshd_dropin,
 )
+from labctl.labs.hello import render_script as render_hello
 from labctl.labs.lab05_organize import RM_GUARD
 from labctl.private import check_private
 from labctl.settings import (
@@ -404,10 +405,10 @@ GUEST_PACKAGES = [*PACKAGES, "nano", "locales", "tzdata"]
 _HEREDOC_END = "SHELL_LAB_EOF"
 
 
-def _write_file(path, content):
+def _write_file(path, content, mode="0644"):
     if _HEREDOC_END in content:
         raise ValueError(f"file content for {path} contains {_HEREDOC_END}")
-    return [f"cat >{path} <<'{_HEREDOC_END}'", content.rstrip("\n"), _HEREDOC_END, f"chmod 0644 {path}"]
+    return [f"cat >{path} <<'{_HEREDOC_END}'", content.rstrip("\n"), _HEREDOC_END, f"chmod {mode} {path}"]
 
 
 def render_guest_setup(config):
@@ -442,6 +443,8 @@ def render_guest_setup(config):
         *_write_file("/etc/ssh/sshd_config.d/00-shell-lab.conf", sshd_dropin()),
         *_write_file("/etc/profile.d/shell-lab-locale.sh", locale_profile(locale)),
         *_write_file("/etc/profile.d/shell-lab-rm.sh", RM_GUARD),
+        # 第 0 題：登入後輸入 hello。
+        *_write_file("/usr/local/bin/hello", render_hello(), mode="0755"),
         # 帳號先鎖住，密碼之後經 stdin 設定。
         "id student >/dev/null 2>&1 || useradd -m -s /bin/bash student",
         "usermod -aG sudo student" if config.student_sudo else "gpasswd -d student sudo >/dev/null 2>&1 || true",

@@ -366,6 +366,11 @@ def render(lab_id):
     return "\n".join(render_grid("\n".join(composed))) + "\n"
 
 
+def spider():
+    """只有蜘蛛的點陣圖，結尾有換行。"""
+    return "\n".join(render_grid(SPIDER)) + "\n"
+
+
 def item(name):
     """一個物品的點陣圖，結尾有換行。"""
     return "\n".join(render_grid(ITEMS[name])) + "\n"
